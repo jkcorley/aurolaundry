@@ -21,8 +21,6 @@ const navItems = [
   { name: "Laundromats", href: "/laundromats", icon: Building2 },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Users", href: "/users", icon: Users },
-  { name: "Calendar", href: "/calendar", icon: Calendar },
-  { name: "Book a Machine", href: "/book-machine", icon: Wrench },
   { name: "Settings", href: "/settings", icon: Settings2 },
 ];
 
