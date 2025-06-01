@@ -11,6 +11,8 @@ import {
   Settings2,
   Map,
   MoreHorizontal,
+  Calendar,
+  Wrench,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -19,6 +21,8 @@ const navItems = [
   { name: "Laundromats", href: "/laundromats", icon: Building2 },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Users", href: "/users", icon: Users },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Book a Machine", href: "/book-machine", icon: Wrench },
   { name: "Settings", href: "/settings", icon: Settings2 },
 ];
 
@@ -28,6 +32,8 @@ const moreItems = [
   { name: "Analytics", href: "/analytics", icon: Map },
   { name: "Laundry Products", href: "/laundry-products", icon: ShoppingCart },
   { name: "Machines", href: "/machines", icon: Settings2 },
+  { name: "Calendar", href: "/calendar", icon: Calendar },
+  { name: "Book a Machine", href: "/book-machine", icon: Wrench },
   // Add more as needed
 ];
 
