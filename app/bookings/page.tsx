@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Search, Clock, DollarSign, MapPin } from "lucide-react"
+import { Calendar, Search, Clock, DollarSign, MapPin, Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import AddBookingDialog from "./AddBookingDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -15,6 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchBookings() {
@@ -82,7 +86,70 @@ export default function BookingsPage() {
   // Sort dates in descending order
   const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
-  const [selectedBooking, setSelectedBooking] = useState<any | null>(null)
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedBooking) return
+
+    setEditLoading(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          user_full_name_snapshot: selectedBooking.user_full_name_snapshot,
+          user_phone_snapshot: selectedBooking.user_phone_snapshot,
+          service_name_snapshot: selectedBooking.service_name_snapshot,
+          current_booking_status: selectedBooking.current_booking_status,
+          payment_status: selectedBooking.payment_status,
+          actual_cost: selectedBooking.actual_cost,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("booking_id", selectedBooking.booking_id)
+
+      if (error) throw error
+
+      setMessage("Booking updated successfully!")
+      // Refresh the bookings list
+      const { data } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("booking_creation_timestamp", { ascending: false })
+      setBookings(data || [])
+    } catch (error: any) {
+      setMessage("Error updating booking: " + error.message)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (bookingId: string) => {
+    if (!window.confirm("Are you sure you want to delete this booking? This action cannot be undone.")) return
+
+    setDeleteLoading(bookingId)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .delete()
+        .eq("booking_id", bookingId)
+
+      if (error) throw error
+
+      setMessage("Booking deleted successfully!")
+      // Refresh the bookings list
+      const { data } = await supabase
+        .from("bookings")
+        .select("*")
+        .order("booking_creation_timestamp", { ascending: false })
+      setBookings(data || [])
+    } catch (error: any) {
+      setMessage("Error deleting booking: " + error.message)
+    } finally {
+      setDeleteLoading(null)
+    }
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -224,14 +291,7 @@ export default function BookingsPage() {
                                   <DialogTitle>Edit Booking Details</DialogTitle>
                                 </DialogHeader>
                                 {selectedBooking && (
-                                  <form
-                                    className="space-y-2"
-                                    onSubmit={async (e) => {
-                                      e.preventDefault();
-                                      // Save logic here (e.g., call supabase update)
-                                      // Optionally show a loading state or success message
-                                    }}
-                                  >
+                                  <form className="space-y-2" onSubmit={handleEdit}>
                                     <div>
                                       <label className="block text-sm font-medium">Customer Name</label>
                                       <input
@@ -280,8 +340,19 @@ export default function BookingsPage() {
                                         onChange={e => setSelectedBooking({ ...selectedBooking, actual_cost: e.target.value })}
                                       />
                                     </div>
-                                    <div className="flex justify-end pt-2">
-                                      <button type="submit" className="bg-primary text-white px-4 py-2 rounded">Save</button>
+                                    <div className="flex justify-between pt-2">
+                                      <Button type="submit" disabled={editLoading}>
+                                        {editLoading ? "Saving..." : "Save Changes"}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                                        onClick={() => handleDelete(selectedBooking.booking_id)}
+                                        disabled={deleteLoading === selectedBooking.booking_id}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
                                     </div>
                                   </form>
                                 )}
@@ -298,6 +369,12 @@ export default function BookingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {message && (
+        <div className={`p-4 rounded-md ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+          {message}
+        </div>
+      )}
     </div>
   )
 }

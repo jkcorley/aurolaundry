@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, Users, Truck, Calendar, Package, Wrench, AlertTriangle, CheckCircle } from "lucide-react"
+import { Building2, Users, Truck, Calendar, Package, Wrench, AlertTriangle, CheckCircle, Bell } from "lucide-react"
 import { getDashboardStats } from "@/lib/database"
 
 export default async function DashboardPage() {
@@ -60,6 +60,12 @@ export default async function DashboardPage() {
       color: "text-red-600",
       badge: stats.pendingOrders > 0 ? { text: "Needs approval", variant: "secondary" as const } : null,
     },
+  ]
+
+  const notifications = [
+    { id: 1, message: "New booking created for tomorrow.", time: "2 min ago" },
+    { id: 2, message: "Machine #12 marked as active.", time: "10 min ago" },
+    { id: 3, message: "User John Doe signed up.", time: "1 hour ago" },
   ]
 
   return (
@@ -166,6 +172,21 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Bell className="h-5 w-5 text-primary" />
+          <span className="font-semibold">Notifications</span>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4">
+          {notifications.map((n) => (
+            <div key={n.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+              <span>{n.message}</span>
+              <span className="text-xs text-muted-foreground">{n.time}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

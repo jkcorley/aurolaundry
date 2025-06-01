@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye } from "lucide-react"
+import { Eye, Trash2 } from "lucide-react"
 import AddLaundromatDialog from "./AddLaundromatDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useState } from "react"
 import type { Laundromat } from "@/lib/types"
+import { supabase } from "@/lib/supabase"
 
 function LaundromatDetails({ laundromat }: { laundromat: Laundromat & { totalMachines: number; activeMachines: number; revenue: number } }) {
   return (
@@ -51,6 +52,9 @@ function LaundromatDetails({ laundromat }: { laundromat: Laundromat & { totalMac
 
 export default function LaundromatsClient({ laundromats }: { laundromats: (Laundromat & { totalMachines: number; activeMachines: number; revenue: number })[] }) {
   const [selectedLaundromat, setSelectedLaundromat] = useState<Laundromat | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   const totalLocations = laundromats.length
   const avgRating = laundromats.length > 0
@@ -58,6 +62,65 @@ export default function LaundromatsClient({ laundromats }: { laundromats: (Laund
     : 0.0
   const totalMachines = laundromats.reduce((sum, l) => sum + l.totalMachines, 0)
   const activeMachines = laundromats.reduce((sum, l) => sum + l.activeMachines, 0)
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLaundromat) return
+
+    setEditLoading(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("participating_laundromats")
+        .update({
+          name: selectedLaundromat.Name,
+          address: selectedLaundromat.Address,
+          borough: selectedLaundromat.Borough,
+          rating: selectedLaundromat.Rating,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("laundromat_id", selectedLaundromat["Laundromat ID"])
+
+      if (error) throw error
+
+      setMessage("Laundromat updated successfully!")
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } catch (error: any) {
+      setMessage("Error updating laundromat: " + error.message)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (laundromatId: string) => {
+    if (!window.confirm("Are you sure you want to delete this laundromat? This action cannot be undone.")) return
+
+    setDeleteLoading(laundromatId)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("participating_laundromats")
+        .delete()
+        .eq("laundromat_id", laundromatId)
+
+      if (error) throw error
+
+      setMessage("Laundromat deleted successfully!")
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } catch (error: any) {
+      setMessage("Error deleting laundromat: " + error.message)
+    } finally {
+      setDeleteLoading(null)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto p-4 flex flex-col gap-6">
@@ -96,6 +159,12 @@ export default function LaundromatsClient({ laundromats }: { laundromats: (Laund
         </Card>
       </div>
 
+      {message && (
+        <div className={`p-4 rounded-md ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+          {message}
+        </div>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -126,64 +195,70 @@ export default function LaundromatsClient({ laundromats }: { laundromats: (Laund
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setSelectedLaundromat(laundromat)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Edit Laundromat Details</DialogTitle>
-                          </DialogHeader>
-                          {selectedLaundromat && (
-                            <form
-                              className="space-y-2"
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                // Save logic here (e.g., call supabase update)
-                                // Optionally show a loading state or success message
-                              }}
-                            >
-                              <div>
-                                <label className="block text-sm font-medium">Name</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedLaundromat?.Name || ""}
-                                  onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Name: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Address</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedLaundromat?.Address || ""}
-                                  onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Address: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Borough</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedLaundromat?.Borough || ""}
-                                  onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Borough: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Rating</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedLaundromat?.Rating || ""}
-                                  onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Rating: e.target.value })}
-                                />
-                              </div>
-                              <div className="flex justify-end pt-2">
-                                <button type="submit" className="bg-primary text-white px-4 py-2 rounded">Save</button>
-                              </div>
-                            </form>
-                          )}
-                        </DialogContent>
-                      </Dialog>
+                      <div className="flex justify-end space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedLaundromat(laundromat)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Edit Laundromat Details</DialogTitle>
+                            </DialogHeader>
+                            {selectedLaundromat && (
+                              <form className="space-y-2" onSubmit={handleEdit}>
+                                <div>
+                                  <label className="block text-sm font-medium">Name</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedLaundromat?.Name || ""}
+                                    onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Name: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Address</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedLaundromat?.Address || ""}
+                                    onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Address: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Borough</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedLaundromat?.Borough || ""}
+                                    onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Borough: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Rating</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedLaundromat?.Rating || ""}
+                                    onChange={e => setSelectedLaundromat({ ...selectedLaundromat, Rating: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                  <Button type="submit" disabled={editLoading}>
+                                    {editLoading ? "Saving..." : "Save Changes"}
+                                  </Button>
+                                </div>
+                              </form>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                          onClick={() => handleDelete(laundromat["Laundromat ID"])}
+                          disabled={deleteLoading === laundromat["Laundromat ID"]}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

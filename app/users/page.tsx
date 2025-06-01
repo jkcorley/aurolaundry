@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Search, ChevronDown, ChevronRight, Mail, Phone, MapPin, Calendar } from "lucide-react"
+import { Users, Search, ChevronDown, ChevronRight, Mail, Phone, MapPin, Calendar, Trash2 } from "lucide-react"
 import AddUserDialog from "./AddUserDialog"
 import { supabase } from "@/lib/supabase"
 import React from "react"
@@ -18,6 +18,9 @@ export default function UsersPage() {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -54,6 +57,68 @@ export default function UsersPage() {
         return <Badge className="bg-yellow-100 text-yellow-800">Suspended</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+
+    setEditLoading(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({
+          full_name: selectedUser.full_name,
+          email: selectedUser.email,
+          phone_number: selectedUser.phone_number,
+          user_role: selectedUser.user_role,
+          account_status: selectedUser.account_status,
+          default_pickup_address_street: selectedUser.default_pickup_address_street,
+          default_pickup_address_city: selectedUser.default_pickup_address_city,
+          default_pickup_address_state: selectedUser.default_pickup_address_state,
+          default_pickup_address_zip: selectedUser.default_pickup_address_zip,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", selectedUser.user_id)
+
+      if (error) throw error
+
+      setMessage("User updated successfully!")
+      // Refresh the users list
+      const { data } = await supabase.from("users").select("*").order("user_id")
+      setUsers(data || [])
+    } catch (error: any) {
+      setMessage("Error updating user: " + error.message)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return
+
+    setDeleteLoading(userId)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("user_id", userId)
+
+      if (error) throw error
+
+      setMessage("User deleted successfully!")
+      // Refresh the users list
+      const { data } = await supabase.from("users").select("*").order("user_id")
+      setUsers(data || [])
+    } catch (error: any) {
+      setMessage("Error deleting user: " + error.message)
+    } finally {
+      setDeleteLoading(null)
     }
   }
 
@@ -203,100 +268,104 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedUser(user)}>
-                                  View Details
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedUser(user)}>
+                                View Details
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit User Details</DialogTitle>
+                              </DialogHeader>
+                              {selectedUser && (
+                                <form className="space-y-2" onSubmit={handleEdit}>
+                                  <div>
+                                    <label className="block text-sm font-medium">Name</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.full_name || `${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`}
+                                      onChange={e => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">Email</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.email}
+                                      onChange={e => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">Phone</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.phone_number || selectedUser.phone}
+                                      onChange={e => setSelectedUser({ ...selectedUser, phone_number: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">Role</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.user_role || selectedUser.role}
+                                      onChange={e => setSelectedUser({ ...selectedUser, user_role: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">Status</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.account_status || selectedUser.status}
+                                      onChange={e => setSelectedUser({ ...selectedUser, account_status: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">Address</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={selectedUser.default_pickup_address_street || selectedUser.address}
+                                      onChange={e => setSelectedUser({ ...selectedUser, default_pickup_address_street: e.target.value })}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium">City/State/Zip</label>
+                                    <input
+                                      className="w-full border rounded px-2 py-1"
+                                      value={[
+                                        selectedUser.default_pickup_address_city,
+                                        selectedUser.default_pickup_address_state,
+                                        selectedUser.default_pickup_address_zip
+                                      ].filter(Boolean).join(", ")}
+                                      onChange={e => {
+                                        const [city, state, zip] = e.target.value.split(",").map(s => s.trim())
+                                        setSelectedUser({
+                                          ...selectedUser,
+                                          default_pickup_address_city: city,
+                                          default_pickup_address_state: state,
+                                          default_pickup_address_zip: zip
+                                        })
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-end pt-2">
+                                    <Button type="submit" disabled={editLoading}>
+                                      {editLoading ? "Saving..." : "Save Changes"}
+                                    </Button>
+                                  </div>
+                                </form>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                            onClick={() => handleDelete(user.user_id)}
+                            disabled={deleteLoading === user.user_id}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Edit User Details</DialogTitle>
-                                </DialogHeader>
-                                {selectedUser && (
-                                  <form
-                                    className="space-y-2"
-                                    onSubmit={async (e) => {
-                                      e.preventDefault();
-                                      // Save logic here (e.g., call supabase update)
-                                      // Optionally show a loading state or success message
-                                    }}
-                                  >
-                                    <div>
-                                      <label className="block text-sm font-medium">Name</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.full_name || `${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`}
-                                        onChange={e => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">Email</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.email}
-                                        onChange={e => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">Phone</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.phone_number || selectedUser.phone}
-                                        onChange={e => setSelectedUser({ ...selectedUser, phone_number: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">Role</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.user_role || selectedUser.role}
-                                        onChange={e => setSelectedUser({ ...selectedUser, user_role: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">Status</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.account_status || selectedUser.status}
-                                        onChange={e => setSelectedUser({ ...selectedUser, account_status: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">Address</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={selectedUser.default_pickup_address_street || selectedUser.address}
-                                        onChange={e => setSelectedUser({ ...selectedUser, default_pickup_address_street: e.target.value })}
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium">City/State/Zip</label>
-                                      <input
-                                        className="w-full border rounded px-2 py-1"
-                                        value={[
-                                          selectedUser.default_pickup_address_city,
-                                          selectedUser.default_pickup_address_state,
-                                          selectedUser.default_pickup_address_zip
-                                        ].filter(Boolean).join(", ")}
-                                        onChange={e => {
-                                          const [city, state, zip] = e.target.value.split(",").map(s => s.trim())
-                                          setSelectedUser({
-                                            ...selectedUser,
-                                            default_pickup_address_city: city,
-                                            default_pickup_address_state: state,
-                                            default_pickup_address_zip: zip
-                                          })
-                                        }}
-                                      />
-                                    </div>
-                                    <div className="flex justify-end pt-2">
-                                      <button type="submit" className="bg-primary text-white px-4 py-2 rounded">Save</button>
-                                    </div>
-                                  </form>
-                                )}
-                              </DialogContent>
-                            </Dialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -309,6 +378,11 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
+      {message && (
+        <div className={`p-4 rounded-md ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+          {message}
+        </div>
+      )}
     </div>
   )
 }

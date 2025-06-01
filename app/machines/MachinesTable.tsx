@@ -4,14 +4,16 @@ import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import MachineEditDialog from "./MachineEditDialog";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
 
 export default function MachinesTable({ machines }: { machines: any[] }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const filtered = machines.filter((m) => {
     const matchesSearch =
@@ -37,6 +39,14 @@ export default function MachinesTable({ machines }: { machines: any[] }) {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  async function deleteMachine(id: string) {
+    if (!window.confirm("Are you sure you want to delete this machine?")) return;
+    setDeleting(id)
+    await supabase.from("machines").delete().eq("machine_id", id)
+    setDeleting(null)
+    window.location.reload()
+  }
 
   return (
     <>
@@ -92,7 +102,17 @@ export default function MachinesTable({ machines }: { machines: any[] }) {
                 <TableCell className="hidden sm:table-cell">{machine.machine_type || '-'}</TableCell>
                 <TableCell>{getStatusBadge(machine.current_status)}</TableCell>
                 <TableCell>
-                  <MachineEditDialog machine={machine} />
+                  <div className="flex gap-2">
+                    <MachineEditDialog machine={machine} />
+                    <button
+                      className="p-1 rounded hover:bg-red-100 text-red-600"
+                      onClick={() => deleteMachine(machine.machine_id)}
+                      disabled={deleting === machine.machine_id}
+                      title="Delete machine"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

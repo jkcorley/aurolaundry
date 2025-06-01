@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, DollarSign, Clock, CheckCircle, XCircle, MapPin, Eye } from "lucide-react"
+import { Package, Search, DollarSign, Clock, CheckCircle, XCircle, MapPin, Eye, Trash2 } from "lucide-react"
 import AddOrderDialog from "./AddOrderDialog"
 import { supabase } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -39,6 +39,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [pendingActions, setPendingActions] = useState<Set<string>>(new Set())
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadOrders() {
@@ -119,6 +122,68 @@ export default function OrdersPage() {
         return <Badge variant="destructive">Failed</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedOrder) return
+
+    setEditLoading(true)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("supply_orders")
+        .update({
+          order_status: selectedOrder.order_status,
+          total_order_amount: selectedOrder.total_order_amount,
+          payment_status: selectedOrder.payment_status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("supply_order_id", selectedOrder.supply_order_id)
+
+      if (error) throw error
+
+      setMessage("Order updated successfully!")
+      // Refresh the orders list
+      const { data } = await supabase
+        .from("supply_orders")
+        .select("*")
+        .order("order_timestamp", { ascending: false })
+      setOrders(data || [])
+    } catch (error: any) {
+      setMessage("Error updating order: " + error.message)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleDelete = async (orderId: string) => {
+    if (!window.confirm("Are you sure you want to delete this order? This action cannot be undone.")) return
+
+    setDeleteLoading(orderId)
+    setMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("supply_orders")
+        .delete()
+        .eq("supply_order_id", orderId)
+
+      if (error) throw error
+
+      setMessage("Order deleted successfully!")
+      // Refresh the orders list
+      const { data } = await supabase
+        .from("supply_orders")
+        .select("*")
+        .order("order_timestamp", { ascending: false })
+      setOrders(data || [])
+    } catch (error: any) {
+      setMessage("Error deleting order: " + error.message)
+    } finally {
+      setDeleteLoading(null)
     }
   }
 
@@ -272,6 +337,12 @@ export default function OrdersPage() {
             </Select>
           </div>
 
+          {message && (
+            <div className={`p-4 rounded-md ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+              {message}
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -309,7 +380,7 @@ export default function OrdersPage() {
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{order.order_timestamp ? new Date(order.order_timestamp).toLocaleDateString() : ""}</TableCell>
                     <TableCell>{getStatusBadge(order.order_status)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{getPaymentBadge(order.payment_status)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{getPaymentBadge(order.payment_status || "")}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div>
                         <div className="font-medium">${order.total_order_amount}</div>
@@ -317,64 +388,71 @@ export default function OrdersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(order)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Edit Order Details</DialogTitle>
-                          </DialogHeader>
-                          {selectedOrder && (
-                            <form
-                              className="space-y-2"
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                // Save logic here (e.g., call supabase update)
-                                // Optionally show a loading state or success message
-                              }}
-                            >
-                              <div>
-                                <label className="block text-sm font-medium">Order ID</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedOrder.supply_order_id}
-                                  onChange={e => setSelectedOrder({ ...selectedOrder, supply_order_id: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Status</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedOrder.order_status}
-                                  onChange={e => setSelectedOrder({ ...selectedOrder, order_status: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Total Amount</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedOrder.total_order_amount}
-                                  onChange={e => setSelectedOrder({ ...selectedOrder, total_order_amount: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium">Payment Status</label>
-                                <input
-                                  className="w-full border rounded px-2 py-1"
-                                  value={selectedOrder.payment_status}
-                                  onChange={e => setSelectedOrder({ ...selectedOrder, payment_status: e.target.value })}
-                                />
-                              </div>
-                              <div className="flex justify-end pt-2">
-                                <button type="submit" className="bg-primary text-white px-4 py-2 rounded">Save</button>
-                              </div>
-                            </form>
-                          )}
-                        </DialogContent>
-                      </Dialog>
+                      <div className="flex space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(order)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Edit Order Details</DialogTitle>
+                            </DialogHeader>
+                            {selectedOrder && (
+                              <form className="space-y-2" onSubmit={handleEdit}>
+                                <div>
+                                  <label className="block text-sm font-medium">Order ID</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedOrder.supply_order_id}
+                                    onChange={e => setSelectedOrder({ ...selectedOrder, supply_order_id: e.target.value })}
+                                    disabled
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Status</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedOrder.order_status}
+                                    onChange={e => setSelectedOrder({ ...selectedOrder, order_status: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Total Amount</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedOrder.total_order_amount}
+                                    onChange={e => setSelectedOrder({ ...selectedOrder, total_order_amount: e.target.value })}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium">Payment Status</label>
+                                  <input
+                                    className="w-full border rounded px-2 py-1"
+                                    value={selectedOrder.payment_status}
+                                    onChange={e => setSelectedOrder({ ...selectedOrder, payment_status: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                  <Button type="submit" disabled={editLoading}>
+                                    {editLoading ? "Saving..." : "Save Changes"}
+                                  </Button>
+                                </div>
+                              </form>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                          onClick={() => order.supply_order_id && handleDelete(order.supply_order_id)}
+                          disabled={deleteLoading === order.supply_order_id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
