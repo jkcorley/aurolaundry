@@ -19,9 +19,9 @@ export default function CalendarPage() {
   const bookingsForDate = bookings.filter(b => b.date === selectedDateStr)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto w-full">
       <h2 className="text-2xl font-bold mb-4">Bookings Calendar</h2>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full overflow-x-auto">
         <Calendar
           onChange={date => {
             setSelectedDate(date as Date)
@@ -36,6 +36,7 @@ export default function CalendarPage() {
             }
             return null
           }}
+          className="w-full max-w-full"
         />
       </div>
       {selectedDate && (
