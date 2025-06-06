@@ -1,42 +1,75 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Mic, X } from "lucide-react";
-import Image from "next/image";
+import { X } from "lucide-react";
 
 export function ChatDashModal() {
-  const [open, setOpen] = useState(false);
-  const agentId = "agent_c84271b1f16846dc9131b94808";
-  const conversationFlowId = "conversation_flow_d3236d1d9848";
+  const [open, setOpen] = useState(true); // Start with modal open
+  const agentId = "68437824c53e52182787d572";
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          className="fixed z-50 rounded-full w-16 h-16 shadow-xl flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 bottom-[84px] right-6 md:bottom-6 md:right-8"
-          aria-label="Open chat assistant"
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100000
+      }}
+    >
+      <div 
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          width: '90vw',
+          height: '90vh',
+          maxWidth: '600px',
+          maxHeight: '90vh',
+          overflow: 'hidden',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <div 
+          style={{
+            padding: '16px',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
         >
-          <Mic className="w-7 h-7" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md w-full rounded-2xl shadow-2xl p-0 overflow-hidden">
-        <DialogHeader className="bg-gradient-to-r from-blue-100 to-white px-6 py-4 flex items-center gap-3 border-b">
-          <Image src="/logo-horizontal.png" alt="Auro Logo" width={32} height={32} />
-          <DialogTitle className="text-lg font-bold">Auro Assistant</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 bg-background p-4 overflow-y-auto flex flex-col">
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold' }}>Auro Assistant</h2>
+          <button 
+            onClick={() => setOpen(false)}
+            style={{
+              padding: '8px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer'
+            }}
+          >
+            <X style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0 }}>
           <iframe
-            src={`https://agency-9e064f.chat-dash.com/prototype/${agentId}?conversation_flow=${conversationFlowId}`}
+            src={`https://agency-usxptf.chat-dash.com/prototype/${agentId}`}
             title="ChatDash Assistant"
             width="100%"
             height="100%"
-            style={{ border: "none", minHeight: "60vh", borderRadius: 12 }}
+            style={{ border: 'none', borderRadius: '12px', width: '100%', height: '100%' }}
             allow="microphone; camera"
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 } 
