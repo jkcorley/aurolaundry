@@ -8,6 +8,8 @@ import Image from "next/image";
 
 export function ChatDashModal() {
   const [open, setOpen] = useState(false);
+  const agentId = "agent_c84271b1f16846dc9131b94808";
+  const conversationFlowId = "conversation_flow_d3236d1d9848";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -26,7 +28,7 @@ export function ChatDashModal() {
         </DialogHeader>
         <div className="flex-1 bg-background p-4 overflow-y-auto flex flex-col">
           <iframe
-            src="https://agency-9e064f.chat-dash.com/prototype/683a99083ca574b13da8970f"
+            src={`https://agency-9e064f.chat-dash.com/prototype/${agentId}?conversation_flow=${conversationFlowId}`}
             title="ChatDash Assistant"
             width="100%"
             height="100%"
